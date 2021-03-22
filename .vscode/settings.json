@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "esp_wifi.h": "c",
+        "freertos.h": "c",
+        "esp_event.h": "c",
+        "esp_wifi_types.h": "c",
+        "locker.h": "c"
+    },
+    "idf.portWin": "COM6",
+    "idf.flashType": "JTAG"
+}
