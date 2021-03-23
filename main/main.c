@@ -179,6 +179,8 @@ void init_mqtt()
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_MQTT_SERVER,
         .client_id = CONFIG_CLIENT_ID,
+        .username = "client",
+        .password = "Th7SgJR&e3p",
         .event_handle = &mqtt_handle};
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
 
