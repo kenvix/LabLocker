@@ -13,13 +13,13 @@ void low(gpio_num_t pin)
 void openDoor()
 {
     high(OUTPUT_PIN_A);
-    vTaskDelay(100);
+    vTaskDelay(50);
     low(OUTPUT_PIN_A);
 }
 
 void closeDoor()
 {
     high(OUTPUT_PIN_B);
-      vTaskDelay(100);
+      vTaskDelay(50);
     low(OUTPUT_PIN_B);
 }

@@ -146,7 +146,7 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 {
     if (event->event_id == MQTT_EVENT_CONNECTED)
     {
-        int id = esp_mqtt_client_subscribe(mqtt_client, "door_locker", 10);
+        int id = esp_mqtt_client_subscribe(mqtt_client, "door_locker", 0);
         ESP_LOGI(TAG, "subscribe success %d", id);
     }
 
@@ -179,8 +179,6 @@ void init_mqtt()
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_MQTT_SERVER,
         .client_id = CONFIG_CLIENT_ID,
-        .username = "client",
-        .password = "Th7SgJR&e3p",
         .event_handle = &mqtt_handle};
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
 
