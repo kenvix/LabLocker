@@ -14,7 +14,6 @@
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
 
-
 static esp_mqtt_client_handle_t mqtt_client;
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -28,6 +27,8 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "wifi station";
 
+static char *channel_id;
+
 static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -39,17 +40,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
-        {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
-        }
-        else
-        {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        }
-        ESP_LOGI(TAG, "connect to the AP fail");
+        esp_wifi_connect();
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -140,14 +131,16 @@ void init_gpio()
 {
     gpio_set_direction(OUTPUT_PIN_A, GPIO_MODE_OUTPUT);
     gpio_set_direction(OUTPUT_PIN_B, GPIO_MODE_OUTPUT);
+    gpio_set_direction(OUTPUT_PIN_C, GPIO_MODE_OUTPUT);
 }
 
 esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 {
     if (event->event_id == MQTT_EVENT_CONNECTED)
     {
-        int id = esp_mqtt_client_subscribe(mqtt_client, "door_locker", 0);
+        int id = esp_mqtt_client_subscribe(mqtt_client, channel_id, 0);
         ESP_LOGI(TAG, "subscribe success %d", id);
+        initSuccess();
     }
 
     if (event->event_id == MQTT_EVENT_DATA)
@@ -157,17 +150,25 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
         {
             return ESP_OK;
         }
-        if (memcmp("open", event->data,event->data_len) == 0)
+        if (memcmp("open", event->data, event->data_len) == 0)
         {
             ESP_LOGI(TAG, "OPEN");
             openDoor();
+            return ESP_OK;
         }
 
-        if (memcmp("close", event->data,event->data_len) == 0)
+        if (memcmp("close", event->data, event->data_len) == 0)
         {
-
             ESP_LOGI(TAG, "CLOSE");
             closeDoor();
+            return ESP_OK;
+        }
+        if(memcmp("unlock",event->data,event->data_len) == 0){
+            ESP_LOGI(TAG, "UNLOCK");
+            openDoor();
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            closeDoor();
+            return ESP_OK;
         }
     }
     return ESP_OK;
@@ -175,10 +176,13 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 
 void init_mqtt()
 {
+    char *device_id = malloc(sizeof("ESP32-") + sizeof(CONFIG_CLIENT_ID));
+    sprintf(device_id,"ESP32-%s",CONFIG_CLIENT_ID);
 
+    //ESP_LOGI(TAG, "CLIENT_ID %s",device_id);
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_MQTT_SERVER,
-        .client_id = CONFIG_CLIENT_ID,
+        .client_id = device_id,
         .event_handle = &mqtt_handle};
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
 
@@ -200,8 +204,12 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-
+    
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+
+    channel_id = malloc(sizeof("door-") + sizeof(CONFIG_CLIENT_ID));
+    sprintf(channel_id,"door-%s",CONFIG_CLIENT_ID);
+
     init_gpio();
     wifi_init_sta();
     init_mqtt();
