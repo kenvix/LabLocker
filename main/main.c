@@ -29,7 +29,6 @@ static const char *TAG = "wifi station";
 
 static char *channel_id;
 
-static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -46,7 +45,12 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_GOT_IP6)
+    {
+        ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
+        ESP_LOGI(TAG, "got ipv6:" IPSTR, IP2STR(&event->ip6_info.ip));
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
@@ -75,6 +79,11 @@ void wifi_init_sta(void)
                                                         &event_handler,
                                                         NULL,
                                                         &instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_GOT_IP6,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));                                                    
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -163,7 +172,8 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
             closeDoor();
             return ESP_OK;
         }
-        if(memcmp("unlock",event->data,event->data_len) == 0){
+        if (memcmp("unlock", event->data, event->data_len) == 0)
+        {
             ESP_LOGI(TAG, "UNLOCK");
             openDoor();
             vTaskDelay(pdMS_TO_TICKS(5000));
@@ -177,7 +187,7 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 void init_mqtt()
 {
     char *device_id = malloc(sizeof("ESP32-") + sizeof(CONFIG_CLIENT_ID));
-    sprintf(device_id,"ESP32-%s",CONFIG_CLIENT_ID);
+    sprintf(device_id, "ESP32-%s", CONFIG_CLIENT_ID);
 
     //ESP_LOGI(TAG, "CLIENT_ID %s",device_id);
     const esp_mqtt_client_config_t mqtt_cfg = {
@@ -204,11 +214,11 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    
+
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
 
     channel_id = malloc(sizeof("door-") + sizeof(CONFIG_CLIENT_ID));
-    sprintf(channel_id,"door-%s",CONFIG_CLIENT_ID);
+    sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
     init_gpio();
     wifi_init_sta();

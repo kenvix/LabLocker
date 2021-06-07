@@ -6,6 +6,8 @@
         "esp_wifi_types.h": "c",
         "locker.h": "c"
     },
-    "idf.portWin": "COM6",
-    "idf.flashType": "JTAG"
+    "idf.portWin": "COM4",
+    "idf.flashType": "JTAG",
+    "idf.espIdfPathWin": "C:\\Users\\mzdlu\\esp\\esp-idf",
+    "idf.toolsPathWin": "C:\\Users\\mzdlu\\.espressif\\tools"
 }
