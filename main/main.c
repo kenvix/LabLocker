@@ -228,9 +228,10 @@ void app_main(void)
     init_gpio();
     wifi_init_sta();
 
-    ESP_LOGD(TAG_MAIN, "WLAN Connected, Setting up NTP client");
+    ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
     // Setting up NTP client
     ntpUpdate();
 
+    ESP_LOGI(TAG_MAIN, "NTP client up, Setting up MQTT client");
     init_mqtt();
 }
