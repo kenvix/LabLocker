@@ -206,6 +206,10 @@ void init_mqtt()
 
 void app_main(void)
 {
+    ESP_LOGD("Base System Initialzing")
+    ESP_LOGI("========= Smart Gate Unlocker ===========
+Written by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
+
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)

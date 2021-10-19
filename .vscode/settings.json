@@ -1,13 +1,21 @@
 {
+    "C_Cpp.intelliSenseEngine": "Tag Parser",
+    "idf.adapterTargetName": "esp32",
+    "idf.customExtraPaths": "C:\\Users\\Kenvix\\.espressif\\tools\\xtensa-esp32-elf\\esp-2021r1-8.4.0\\xtensa-esp32-elf\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\xtensa-esp32s2-elf\\esp-2021r1-8.4.0\\xtensa-esp32s2-elf\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\xtensa-esp32s3-elf\\esp-2021r1-8.4.0\\xtensa-esp32s3-elf\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\riscv32-esp-elf\\esp-2021r1-8.4.0\\riscv32-esp-elf\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\esp32ulp-elf\\2.28.51-esp-20191205\\esp32ulp-elf-binutils\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\esp32s2ulp-elf\\2.28.51-esp-20191205\\esp32s2ulp-elf-binutils\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\cmake\\3.16.4\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\openocd-esp32\\v0.10.0-esp32-20210401\\openocd-esp32\\bin;C:\\Users\\Kenvix\\.espressif\\tools\\ninja\\1.10.2;C:\\Users\\Kenvix\\.espressif\\tools\\idf-exe\\1.0.1;C:\\Users\\Kenvix\\.espressif\\tools\\ccache\\3.7;C:\\Users\\Kenvix\\.espressif\\tools\\dfu-util\\0.9\\dfu-util-0.9-win64",
+    "idf.customExtraVars": "{}",
+    "idf.espIdfPathWin": "C:\\Users\\Kenvix\\esp\\esp-idf",
+    "idf.openOcdConfigs": [
+        "interface/ftdi/esp32_devkitj_v1.cfg",
+        "target/esp32.cfg"
+    ],
+    "idf.portWin": "COM6",
+    "idf.pythonBinPathWin": "C:\\Users\\Kenvix\\.espressif\\python_env\\idf4.3_py3.8_env\\Scripts\\python.exe",
+    "idf.toolsPathWin": "C:\\Users\\Kenvix\\.espressif",
     "files.associations": {
-        "esp_wifi.h": "c",
-        "freertos.h": "c",
-        "esp_event.h": "c",
-        "esp_wifi_types.h": "c",
-        "locker.h": "c"
-    },
-    "idf.portWin": "COM4",
-    "idf.flashType": "JTAG",
-    "idf.espIdfPathWin": "C:\\Users\\mzdlu\\esp\\esp-idf",
-    "idf.toolsPathWin": "C:\\Users\\mzdlu\\.espressif\\tools"
+        "*.tcc": "c",
+        "chrono": "c",
+        "fstream": "c",
+        "*.ipp": "c",
+        "ratio": "c"
+    }
 }
