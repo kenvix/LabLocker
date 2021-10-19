@@ -7,6 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include "main.h"
+#include "functions.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -206,14 +207,14 @@ void init_mqtt()
 
 void app_main(void)
 {
-    ESP_LOGD("Base System Initialzing")
-    ESP_LOGI("========= Smart Gate Unlocker ===========
-Written by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
+    ESP_LOGD(TAG_MAIN, "Base System Initialzing");
+    ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
 
-    //Initialize NVS
+    // Initialize NVS/NVRAM
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
+        ESP_LOGI(TAG_MAIN, "Earsing NVS/NVRAM ...");
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
@@ -226,5 +227,10 @@ Written by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved
 
     init_gpio();
     wifi_init_sta();
+
+    ESP_LOGD(TAG_MAIN, "WLAN Connected, Setting up NTP client");
+    // Setting up NTP client
+    ntpUpdate();
+
     init_mqtt();
 }

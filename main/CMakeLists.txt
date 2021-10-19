@@ -1,2 +1,2 @@
-idf_component_register(SRCS "locker.c" "main.c" "functions.c"
+idf_component_register(SRCS "locker.c" "main.c" "functions.c" "sntp.c"
                     INCLUDE_DIRS ".")

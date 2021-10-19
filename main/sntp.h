@@ -1,0 +1,1 @@
+void ntp_init();

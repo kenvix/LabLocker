@@ -16,6 +16,7 @@
         "chrono": "c",
         "fstream": "c",
         "*.ipp": "c",
-        "ratio": "c"
+        "ratio": "c",
+        "*.inc": "c"
     }
 }
