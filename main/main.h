@@ -16,7 +16,7 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "locker.h"
-
+#include "functions.h"
 
 #define EXAMPLE_ESP_WIFI_SSID CONFIG_ESP_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS CONFIG_ESP_WIFI_PASSWORD

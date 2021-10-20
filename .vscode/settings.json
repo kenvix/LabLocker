@@ -17,6 +17,7 @@
         "fstream": "c",
         "*.ipp": "c",
         "ratio": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "smartconfig.h": "c"
     }
 }

@@ -110,7 +110,11 @@ void ntp_init()
 
 static void obtain_time(void)
 {
-    initialize_sntp();
+    if (systemStatus.isNtpCreated != 1) {
+        ESP_LOGI(TAG_SNTP, "Creating NTP client");
+        initialize_sntp();
+        systemStatus.isNtpCreated = 1;
+    }
 
     // wait for time to be set
     time_t now = 0;
@@ -128,7 +132,7 @@ static void obtain_time(void)
 static void initialize_sntp(void)
 {
     ESP_LOGI(TAG_SNTP, "Initializing SNTP");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setoperatingmode(SNTP_SYNC_MODE_IMMED);
     sntp_setservername(0, NTP_SERVER_1);
     sntp_setservername(1, NTP_SERVER_2);
     sntp_setservername(3, NTP_SERVER_3);

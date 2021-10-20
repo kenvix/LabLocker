@@ -1,14 +1,15 @@
-/* WiFi station Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include "main.h"
 #include "functions.h"
 #include "matrix_keyboard.h"
+#include "esp_smartconfig.h"
+#include "esp_netif.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_wifi.h"
+#include "esp_wpa2.h"
+#include "esp_event.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -16,10 +17,10 @@
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
 
-static esp_mqtt_client_handle_t mqtt_client;
+esp_mqtt_client_handle_t mqtt_client;
 
 /* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
+EventGroupHandle_t s_wifi_event_group;
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -27,13 +28,19 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-static const char *TAG = "wifi station";
+static const char* TAG = "wifi station";
+static char* channel_id;
+SystemStatus systemStatus;
+void smartconfig_example_task(void * parm);
 
-static char *channel_id;
+/* The event group allows multiple bits for each event,
+   but we only care about one event - are we connected
+   to the AP with an IP? */
+const int CONNECTED_BIT = BIT0;
+const int ESPTOUCH_DONE_BIT = BIT1;
 
-
-static void event_handler(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data)
+static void event_handler(void* arg, esp_event_base_t event_base,
+    int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
@@ -45,15 +52,58 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_GOT_IP6)
     {
-        ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
+        ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
         ESP_LOGI(TAG, "got ipv6:" IPSTR, IP2STR(&event->ip6_info.ip));
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+    else if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
+        ESP_LOGI(TAG, "Scan done");
+    }
+    else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
+        ESP_LOGI(TAG, "Found channel");
+    }
+    else if (event_base == SC_EVENT && event_id == SC_EVENT_GOT_SSID_PSWD) {
+        ESP_LOGI(TAG, "Got SSID and password");
+
+        smartconfig_event_got_ssid_pswd_t* evt = (smartconfig_event_got_ssid_pswd_t*)event_data;
+        wifi_config_t wifi_config;
+        uint8_t ssid[33] = { 0 };
+        uint8_t password[65] = { 0 };
+        uint8_t rvd_data[33] = { 0 };
+
+        bzero(&wifi_config, sizeof(wifi_config_t));
+        memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
+        memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
+        wifi_config.sta.bssid_set = evt->bssid_set;
+        if (wifi_config.sta.bssid_set == true) {
+            memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
+        }
+
+        memcpy(ssid, evt->ssid, sizeof(evt->ssid));
+        memcpy(password, evt->password, sizeof(evt->password));
+        ESP_LOGI(TAG, "SSID:%s", ssid);
+        ESP_LOGI(TAG, "PASSWORD:%s", password);
+        if (evt->type == SC_TYPE_ESPTOUCH_V2) {
+            ESP_ERROR_CHECK(esp_smartconfig_get_rvd_data(rvd_data, sizeof(rvd_data)));
+            ESP_LOGI(TAG, "RVD_DATA:");
+            for (int i = 0; i < 33; i++) {
+                printf("%02x ", rvd_data[i]);
+            }
+            printf("\n");
+        }
+
+        //ESP_ERROR_CHECK( esp_wifi_disconnect() );
+        //ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+        //esp_wifi_connect();
+    }
+    else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
+        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
     }
 }
 
@@ -72,20 +122,22 @@ void wifi_init_sta(void)
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
+        ESP_EVENT_ANY_ID,
+        &event_handler,
+        NULL,
+        &instance_any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+        IP_EVENT_STA_GOT_IP,
+        &event_handler,
+        NULL,
+        &instance_got_ip));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_GOT_IP6,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));                                                    
+        IP_EVENT_GOT_IP6,
+        &event_handler,
+        NULL,
+        &instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -110,22 +162,22 @@ void wifi_init_sta(void)
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
      * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                           pdFALSE,
-                                           pdFALSE,
-                                           portMAX_DELAY);
+        WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+        pdFALSE,
+        pdFALSE,
+        portMAX_DELAY);
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
     if (bits & WIFI_CONNECTED_BIT)
     {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+            EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     }
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+            EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     }
     else
     {
@@ -188,14 +240,14 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 
 void init_mqtt()
 {
-    char *device_id = malloc(sizeof("ESP32-") + sizeof(CONFIG_CLIENT_ID));
+    char* device_id = malloc(sizeof("ESP32-") + sizeof(CONFIG_CLIENT_ID));
     sprintf(device_id, "ESP32-%s", CONFIG_CLIENT_ID);
 
     //ESP_LOGI(TAG, "CLIENT_ID %s",device_id);
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_MQTT_SERVER,
         .client_id = device_id,
-        .event_handle = &mqtt_handle};
+        .event_handle = &mqtt_handle };
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
 
     if (mqtt_client != NULL)
@@ -206,50 +258,14 @@ void init_mqtt()
     }
 }
 
-esp_err_t example_matrix_kbd_event_handler(matrix_kbd_handle_t mkbd_handle, matrix_kbd_event_id_t event, void *event_data, void *handler_args)
-{
-    uint32_t key_code = (uint32_t)event_data;
-    switch (event) {
-    case MATRIX_KBD_EVENT_DOWN:
-        ESP_LOGI(TAG, "press event, key code = %04x", key_code);
-        break;
-    case MATRIX_KBD_EVENT_UP:
-        ESP_LOGI(TAG, "release event, key code = %04x", key_code);
-        break;
-    }
-    return ESP_OK;
-}
-
-void init_keyboard() {
-    ESP_LOGI(TAG_MAIN, "Setting up Matrix keyboard");
-
-    matrix_kbd_handle_t kbd = NULL;
-    // 应用默认矩阵键盘配置
-    matrix_kbd_config_t config = MATRIX_KEYBOARD_DEFAULT_CONFIG();
-    // 设置矩阵键盘列使用的GPIO
-    config.col_gpios = (int[]) {
-        12, 14, 27, 26
-    };
-    // 设置列数
-    config.nr_col_gpios = 4;
-    // 设置矩阵键盘行使用的GPIO
-    config.row_gpios = (int[]) {
-        25, 33, 32, 35
-    };
-    // 设置行数
-    config.nr_row_gpios = 4;
-    // 安装矩阵键盘驱动
-    matrix_kbd_install(&config, &kbd);
-    // 绑定键盘事件处理函数
-    matrix_kbd_register_event_handler(kbd, example_matrix_kbd_event_handler, NULL);
-    // 键盘开始工作
-    matrix_kbd_start(kbd);
-}
 
 void app_main(void)
 {
     ESP_LOGD(TAG_MAIN, "Base System Initialzing");
     ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
+
+    systemStatus.isWlanConnected = 0;
+    systemStatus.isNtpCreated = 0;
 
     // Initialize NVS/NVRAM
     esp_err_t ret = nvs_flash_init();
@@ -267,7 +283,6 @@ void app_main(void)
     sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
     init_gpio();
-    init_keyboard();
     wifi_init_sta();
 
     ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
@@ -276,4 +291,7 @@ void app_main(void)
 
     ESP_LOGI(TAG_MAIN, "NTP client up, Setting up MQTT client");
     init_mqtt();
+
+    ESP_LOGI(TAG_MAIN, "Setting up Smartconfig for TOTP");
+    smartconfig_example_task(NULL);
 }
