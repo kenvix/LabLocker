@@ -19,6 +19,7 @@
         "ratio": "c",
         "*.inc": "c",
         "smartconfig.h": "c",
-        "functions.h": "c"
+        "functions.h": "c",
+        "blufi_example.h": "c"
     }
 }

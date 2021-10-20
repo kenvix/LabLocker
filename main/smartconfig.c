@@ -67,11 +67,12 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
 
         // TOTP propose
         if (strlen(password) < 8) {
-            if (systemStatus.isNtpCreated == 1) {
+            if (systemStatus.isNtpFinished == 1) {
+                ESP_LOGI(TAG_SMARTCONFIG, "Password length < 6, TOTP purpose");
                 xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
                 // call totp
             } else {
-                
+                ESP_LOGW(TAG_SMARTCONFIG, "Password length < 6 but NTP has not finshed!! decline");
                 xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
             }
         }
@@ -93,14 +94,13 @@ void smartconfig_example_task(void * parm)
         if(uxBits & ESPTOUCH_DONE_BIT) {
             ESP_LOGI(TAG_SMARTCONFIG, "smartconfig over");
             esp_smartconfig_stop();
-            //vTaskDelete(NULL);
             return;
         }
         ESP_LOGI(TAG_SMARTCONFIG, "SMARTCONFIG WAITING LOOP END");
     }
 }
 
-void smartconfigBegin() {
+void _smartconfigBegin(void * _) {
     s_wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
     ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &smartconfig_event_handler, NULL) );
@@ -113,3 +113,7 @@ void smartconfigBegin() {
     }
     
 }
+
+void smartconfigBegin() {
+    xTaskCreate(_smartconfigBegin, "Smartconfig Worker", 4096, NULL, 3, NULL);
+} 

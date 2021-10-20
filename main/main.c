@@ -11,6 +11,7 @@
 #include "esp_wpa2.h"
 #include "esp_event.h"
 #include "smartconfig.h"
+#include "blufi_example.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -230,6 +231,7 @@ void app_main(void)
 
     systemStatus.isWlanConnected = 0;
     systemStatus.isNtpCreated = 0;
+    systemStatus.isNtpFinished = 0;
 
     // Initialize NVS/NVRAM
     esp_err_t ret = nvs_flash_init();
@@ -249,8 +251,11 @@ void app_main(void)
     init_gpio();
     wifi_init_sta();
 
-    ESP_LOGI(TAG_MAIN, "Setting up Smartconfig for TOTP");
-    smartconfigBegin();
+    ESP_LOGI(TAG_MAIN, "Setting up Smartconfig for Network initialize");
+    //smartconfigBegin();
+
+    ESP_LOGI(TAG_MAIN, "Setting up BluFI for TOTP");
+    blufiInit();
 
     ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
     // Setting up NTP client

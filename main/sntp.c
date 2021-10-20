@@ -106,6 +106,8 @@ void ntp_init()
             vTaskDelay(2000 / portTICK_PERIOD_MS);
         }
     }
+
+    systemStatus.isNtpFinished = 1;
 }
 
 static void obtain_time(void)
