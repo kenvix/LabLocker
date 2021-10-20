@@ -23,19 +23,15 @@
 #include "functions.h"
 #include "smartconfig.h"
 
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
 static const char *TAG_SMARTCONFIG = "smartconfig_example";
 
 static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_wifi_connect();
-        xEventGroupClearBits(s_wifi_event_group, CONNECTED_BIT);
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
-    } else if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
+    if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
         ESP_LOGI(TAG_SMARTCONFIG, "Scan done");
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
         ESP_LOGI(TAG_SMARTCONFIG, "Found channel");
@@ -44,8 +40,8 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
 
         smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
         wifi_config_t wifi_config;
-        uint8_t ssid[33] = { 0 };
-        uint8_t password[65] = { 0 };
+        char ssid[33] = { 0 };
+        char password[65] = { 0 };
         uint8_t rvd_data[33] = { 0 };
 
         bzero(&wifi_config, sizeof(wifi_config_t));
@@ -69,9 +65,16 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
             printf("\n");
         }
 
-        //ESP_ERROR_CHECK( esp_wifi_disconnect() );
-        //ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-        //esp_wifi_connect();
+        // TOTP propose
+        if (strlen(password) < 8) {
+            if (systemStatus.isNtpCreated == 1) {
+                xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+                // call totp
+            } else {
+                
+                xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+            }
+        }
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
         xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
     }
@@ -80,18 +83,33 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
 void smartconfig_example_task(void * parm)
 {
     EventBits_t uxBits;
-    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
+    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH_V2) );
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
     while (1) {
-        uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
-        if(uxBits & CONNECTED_BIT) {
-            ESP_LOGI(TAG_SMARTCONFIG, "WiFi Connected to ap");
-        }
+        ESP_LOGI(TAG_SMARTCONFIG, "SMARTCONFIG WAITING LOOP BEGIN");
+        uxBits = xEventGroupWaitBits(s_wifi_event_group, ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
+
         if(uxBits & ESPTOUCH_DONE_BIT) {
             ESP_LOGI(TAG_SMARTCONFIG, "smartconfig over");
             esp_smartconfig_stop();
-            vTaskDelete(NULL);
+            //vTaskDelete(NULL);
+            return;
         }
+        ESP_LOGI(TAG_SMARTCONFIG, "SMARTCONFIG WAITING LOOP END");
     }
+}
+
+void smartconfigBegin() {
+    s_wifi_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &smartconfig_event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
+
+    while (true)
+    {
+        smartconfig_example_task(NULL);
+        ESP_LOGI(TAG_SMARTCONFIG, "SMARTCONFIG EX LOOP AGAIN");
+    }
+    
 }

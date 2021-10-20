@@ -18,6 +18,7 @@
         "*.ipp": "c",
         "ratio": "c",
         "*.inc": "c",
-        "smartconfig.h": "c"
+        "smartconfig.h": "c",
+        "functions.h": "c"
     }
 }

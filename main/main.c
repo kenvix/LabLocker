@@ -10,6 +10,7 @@
 #include "esp_wifi.h"
 #include "esp_wpa2.h"
 #include "esp_event.h"
+#include "smartconfig.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -20,7 +21,7 @@
 esp_mqtt_client_handle_t mqtt_client;
 
 /* FreeRTOS event group to signal when we are connected*/
-EventGroupHandle_t s_wifi_event_group;
+static EventGroupHandle_t s_wifi_event_group;
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -30,7 +31,7 @@ EventGroupHandle_t s_wifi_event_group;
 
 static const char* TAG = "wifi station";
 static char* channel_id;
-SystemStatus systemStatus;
+volatile SystemStatus systemStatus;
 void smartconfig_example_task(void * parm);
 
 /* The event group allows multiple bits for each event,
@@ -67,43 +68,6 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
     else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
         ESP_LOGI(TAG, "Found channel");
-    }
-    else if (event_base == SC_EVENT && event_id == SC_EVENT_GOT_SSID_PSWD) {
-        ESP_LOGI(TAG, "Got SSID and password");
-
-        smartconfig_event_got_ssid_pswd_t* evt = (smartconfig_event_got_ssid_pswd_t*)event_data;
-        wifi_config_t wifi_config;
-        uint8_t ssid[33] = { 0 };
-        uint8_t password[65] = { 0 };
-        uint8_t rvd_data[33] = { 0 };
-
-        bzero(&wifi_config, sizeof(wifi_config_t));
-        memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
-        memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
-        wifi_config.sta.bssid_set = evt->bssid_set;
-        if (wifi_config.sta.bssid_set == true) {
-            memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
-        }
-
-        memcpy(ssid, evt->ssid, sizeof(evt->ssid));
-        memcpy(password, evt->password, sizeof(evt->password));
-        ESP_LOGI(TAG, "SSID:%s", ssid);
-        ESP_LOGI(TAG, "PASSWORD:%s", password);
-        if (evt->type == SC_TYPE_ESPTOUCH_V2) {
-            ESP_ERROR_CHECK(esp_smartconfig_get_rvd_data(rvd_data, sizeof(rvd_data)));
-            ESP_LOGI(TAG, "RVD_DATA:");
-            for (int i = 0; i < 33; i++) {
-                printf("%02x ", rvd_data[i]);
-            }
-            printf("\n");
-        }
-
-        //ESP_ERROR_CHECK( esp_wifi_disconnect() );
-        //ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-        //esp_wifi_connect();
-    }
-    else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
-        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
     }
 }
 
@@ -285,13 +249,13 @@ void app_main(void)
     init_gpio();
     wifi_init_sta();
 
+    ESP_LOGI(TAG_MAIN, "Setting up Smartconfig for TOTP");
+    smartconfigBegin();
+
     ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
     // Setting up NTP client
     ntpUpdate();
 
     ESP_LOGI(TAG_MAIN, "NTP client up, Setting up MQTT client");
     init_mqtt();
-
-    ESP_LOGI(TAG_MAIN, "Setting up Smartconfig for TOTP");
-    smartconfig_example_task(NULL);
 }

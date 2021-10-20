@@ -30,9 +30,10 @@ typedef struct SystemStatus
 {
     unsigned char isWlanConnected : 1;
     unsigned char isNtpCreated : 1;
+    unsigned char isNtpFinished : 1;
 } SystemStatus;
 
-extern SystemStatus systemStatus;
+extern volatile SystemStatus systemStatus;
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
@@ -47,9 +48,6 @@ extern const int ESPTOUCH_DONE_BIT;
 */
 
 extern esp_mqtt_client_handle_t mqtt_client;
-
-/* FreeRTOS event group to signal when we are connected*/
-extern EventGroupHandle_t s_wifi_event_group;
 
 void gpioSetHigh(gpio_num_t);
 void gpioSetLow(gpio_num_t);
