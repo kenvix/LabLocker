@@ -27,5 +27,6 @@ void gpioSetLow(gpio_num_t pin)
 }
 
 void ntpUpdate() {
+    
     ntp_init();
 }

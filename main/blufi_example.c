@@ -180,18 +180,18 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         BLUFI_INFO("Recv SOFTAP CHANNEL %d\n", ap_config.ap.channel);
         break;
     case ESP_BLUFI_EVENT_GET_WIFI_LIST:{
-        wifi_scan_config_t scanConf = {
-            .ssid = NULL,
-            .bssid = NULL,
-            .channel = 0,
-            .show_hidden = false
-        };
         //esp_wifi_scan_start(&scanConf, true);
         break;
     }
     case ESP_BLUFI_EVENT_RECV_CUSTOM_DATA:
         BLUFI_INFO("Recv Custom Data %d\n", param->custom_data.data_len);
         esp_log_buffer_hex("Custom Data", param->custom_data.data, param->custom_data.data_len);
+        // Check whether is TOTP data
+        if (param->custom_data.data_len == 6) {
+            int totpPassword = 0;
+            BLUFI_INFO("TOTP / Decoded into TOTP int: ", totpPassword);
+        }
+
         break;
 	case ESP_BLUFI_EVENT_RECV_USERNAME:
         /* Not handle currently */

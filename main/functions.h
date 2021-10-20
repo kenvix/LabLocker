@@ -21,6 +21,18 @@
 #define NVS_WLAN_SSID "wlan.ssid"
 #define NVS_WLAN_PSK "wlan.psk"
 #define NVS_TOTP_KEY "totp.key"
+
+#define PIN_DOOR_OPEN
+#define PIN_DOOR_CLOSE
+#define PIN_LED_SYS
+#define PIN_LED_WLAN
+#define PIN_LED_NTP
+#define PIN_LED_MQTT
+#define PIN_BEEP
+
+#define DOOR_ROLLTATE_DELAY 300
+#define DOOR_WAIT_USER_DELAY 5000
+
 #define NTP_SERVER_1 "ntp.aliyun.com"
 #define NTP_SERVER_2 "ntp.tuna.tsinghua.edu.cn"
 #define NTP_SERVER_3 "time1.cloud.tencent.com"
