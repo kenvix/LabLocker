@@ -8,6 +8,7 @@
 */
 #include "main.h"
 #include "functions.h"
+#include "matrix_keyboard.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -205,6 +206,46 @@ void init_mqtt()
     }
 }
 
+esp_err_t example_matrix_kbd_event_handler(matrix_kbd_handle_t mkbd_handle, matrix_kbd_event_id_t event, void *event_data, void *handler_args)
+{
+    uint32_t key_code = (uint32_t)event_data;
+    switch (event) {
+    case MATRIX_KBD_EVENT_DOWN:
+        ESP_LOGI(TAG, "press event, key code = %04x", key_code);
+        break;
+    case MATRIX_KBD_EVENT_UP:
+        ESP_LOGI(TAG, "release event, key code = %04x", key_code);
+        break;
+    }
+    return ESP_OK;
+}
+
+void init_keyboard() {
+    ESP_LOGI(TAG_MAIN, "Setting up Matrix keyboard");
+
+    matrix_kbd_handle_t kbd = NULL;
+    // 应用默认矩阵键盘配置
+    matrix_kbd_config_t config = MATRIX_KEYBOARD_DEFAULT_CONFIG();
+    // 设置矩阵键盘列使用的GPIO
+    config.col_gpios = (int[]) {
+        12, 14, 27, 26
+    };
+    // 设置列数
+    config.nr_col_gpios = 4;
+    // 设置矩阵键盘行使用的GPIO
+    config.row_gpios = (int[]) {
+        25, 33, 32, 35
+    };
+    // 设置行数
+    config.nr_row_gpios = 4;
+    // 安装矩阵键盘驱动
+    matrix_kbd_install(&config, &kbd);
+    // 绑定键盘事件处理函数
+    matrix_kbd_register_event_handler(kbd, example_matrix_kbd_event_handler, NULL);
+    // 键盘开始工作
+    matrix_kbd_start(kbd);
+}
+
 void app_main(void)
 {
     ESP_LOGD(TAG_MAIN, "Base System Initialzing");
@@ -226,6 +267,7 @@ void app_main(void)
     sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
     init_gpio();
+    init_keyboard();
     wifi_init_sta();
 
     ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
