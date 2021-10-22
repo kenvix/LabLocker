@@ -295,8 +295,7 @@ void app_main(void)
     xTaskCreate(init_all, "App init", 4096, NULL, 3, NULL);
     while (true)
     {
-        char c = getchar();
-        putchar(c);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        int c = fgetc(stdin);
+        fputc(c, stdout);
     }
 }

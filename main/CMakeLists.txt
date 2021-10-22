@@ -3,4 +3,6 @@ idf_component_register(SRCS "locker.c" "main.c"
                     "blufi_example.c"
                     "blufi_security.c"
                     "blufi_init.c"
+                    "otp.cpp"
+                    "otp_key.cpp"
                     INCLUDE_DIRS ".")
