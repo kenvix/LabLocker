@@ -189,7 +189,7 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         // Check whether is TOTP data
         if (param->custom_data.data_len == 6) {
             int totpPassword = 0;
-            BLUFI_INFO("TOTP / Decoded into TOTP int: ", totpPassword);
+            BLUFI_INFO("TOTP / Decoded into TOTP int: %d", totpPassword);
         }
 
         break;

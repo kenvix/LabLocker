@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include "sntp.h"
 
+static const char* TAG = "Functions";
+
 void gpioSetHigh(gpio_num_t pin)
 {
     gpio_set_level(pin, 1);
@@ -26,7 +28,17 @@ void gpioSetLow(gpio_num_t pin)
     gpio_set_level(pin, 0);
 }
 
-void ntpUpdate() {
-    
-    ntp_init();
+void ntpUpdate() 
+{
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    if (timeinfo.tm_year < (2016 - 1900))
+    {
+        ESP_LOGI(TAG, "Running SNTP Client");
+        ntp_init();
+        ntpUpdate();
+        systemStatus.isNtpFinished = 1;
+    }
 }

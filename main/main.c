@@ -33,7 +33,7 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char* TAG = "wifi station";
 static char* channel_id;
 volatile SystemStatus systemStatus;
-void smartconfig_example_task(void * parm);
+void smartconfig_example_task(void* parm);
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
@@ -162,6 +162,52 @@ void init_gpio()
     gpio_set_direction(OUTPUT_PIN_C, GPIO_MODE_OUTPUT);
 }
 
+char handleCommand(char* data, int data_len) {
+    if (data_len == 0)
+    {
+        return 0;
+    }
+    else if (memcmp("open", data, data_len) == 0)
+    {
+        ESP_LOGI(TAG, "Door Control: OPEN and KEEP");
+        openDoor();
+        return 0;
+    }
+    else if (memcmp("close", data, data_len) == 0)
+    {
+        ESP_LOGI(TAG, "Door Control: CLOSE and KEEP");
+        closeDoor();
+        return 0;
+    }
+    else if (memcmp("unlock", data, data_len) == 0)
+    {
+        ESP_LOGI(TAG, "Door Control: UNLOCK: OPEN and CLOSE");
+        openDoor();
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        closeDoor();
+        return 0;
+    }
+    else if (memcmp("echo ", data, data_len) == 0)
+    {
+        int size = sizeof(char) * data_len - 4;
+        char* buffer = (char*) malloc(size);
+        memcpy(buffer, data + 5, size);
+        buffer[size - 1] = 0;
+        ESP_LOGI(TAG, "Echo data: %s", buffer);
+        free(buffer);
+        return 0;
+    }
+    else if (memcmp("set key ", data, data_len) == 0)
+    {
+        ESP_LOGI(TAG, "TOTP Control: Receiving new TOTP PSK");
+
+        return 0;
+    }
+
+    ESP_LOGW(TAG, "Received unknown command: %s", data);
+    return 1;
+}
+
 esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 {
     if (event->event_id == MQTT_EVENT_CONNECTED)
@@ -174,31 +220,7 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
     if (event->event_id == MQTT_EVENT_DATA)
     {
         ESP_LOGI(TAG, "new message, size: %d", event->data_len);
-        if (event->data_len == 0)
-        {
-            return ESP_OK;
-        }
-        if (memcmp("open", event->data, event->data_len) == 0)
-        {
-            ESP_LOGI(TAG, "OPEN");
-            openDoor();
-            return ESP_OK;
-        }
-
-        if (memcmp("close", event->data, event->data_len) == 0)
-        {
-            ESP_LOGI(TAG, "CLOSE");
-            closeDoor();
-            return ESP_OK;
-        }
-        if (memcmp("unlock", event->data, event->data_len) == 0)
-        {
-            ESP_LOGI(TAG, "UNLOCK");
-            openDoor();
-            vTaskDelay(pdMS_TO_TICKS(5000));
-            closeDoor();
-            return ESP_OK;
-        }
+        handleCommand(event->data, event->data_len);
     }
     return ESP_OK;
 }
@@ -223,16 +245,7 @@ void init_mqtt()
     }
 }
 
-
-void app_main(void)
-{
-    ESP_LOGD(TAG_MAIN, "Base System Initialzing");
-    ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
-
-    systemStatus.isWlanConnected = 0;
-    systemStatus.isNtpCreated = 0;
-    systemStatus.isNtpFinished = 0;
-
+void init_all() {
     // Initialize NVS/NVRAM
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -263,4 +276,27 @@ void app_main(void)
 
     ESP_LOGI(TAG_MAIN, "NTP client up, Setting up MQTT client");
     init_mqtt();
+
+    ESP_LOGI(TAG_MAIN, "Initialization completed");
+    vTaskDelete(NULL);
+    return;
+}
+
+
+void app_main(void)
+{
+    ESP_LOGD(TAG_MAIN, "Base System Initialzing");
+    ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
+
+    systemStatus.isWlanConnected = 0;
+    systemStatus.isNtpCreated = 0;
+    systemStatus.isNtpFinished = 0;
+
+    xTaskCreate(init_all, "App init", 4096, NULL, 3, NULL);
+    while (true)
+    {
+        char c = getchar();
+        putchar(c);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }
