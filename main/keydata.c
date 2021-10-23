@@ -1,6 +1,6 @@
 #include "keydata.h"
 
-KeyData keyData = {
+const KeyData keyData = {
     "==BEGIN-KEYDATA=",
     0x1234567890,
     "7Z9MV5TKCACFJ4SD",

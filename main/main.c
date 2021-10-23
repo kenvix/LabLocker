@@ -12,7 +12,9 @@
 #include "esp_event.h"
 #include "smartconfig.h"
 #include "blufi_example.h"
+#include "time.h"
 #include "keydata.h"
+#include "totp.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -274,8 +276,12 @@ void init_all() {
     ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
     // Setting up NTP client
     ntpUpdate();
+    ESP_LOGI(TAG_MAIN, "NTP client up, UNIX Time %ld", time(NULL));
 
-    ESP_LOGI(TAG_MAIN, "NTP client up, Setting up MQTT client");
+    totpInitSecret();
+    ESP_LOGI(TAG_MAIN, "Current TOTP key is %u", totpGenerateToken(0));
+
+    ESP_LOGI(TAG_MAIN, "Setting up MQTT client");
     init_mqtt();
 
     ESP_LOGI(TAG_MAIN, "Initialization completed");
@@ -289,6 +295,7 @@ void app_main(void)
     ESP_LOGD(TAG_MAIN, "Base System Initialzing");
     ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
     ESP_LOGI(TAG_MAIN, "Product Serial ID: 0x%llX (%lld)", keyData.serialId, keyData.serialId);
+    ESP_LOGI(TAG_MAIN, "Product TOTP key: %s", keyData.totpKey);
     systemStatus.isWlanConnected = 0;
     systemStatus.isNtpCreated = 0;
     systemStatus.isNtpFinished = 0;
@@ -296,6 +303,7 @@ void app_main(void)
     xTaskCreate(init_all, "App init", 4096, NULL, 3, NULL);
     while (true)
     {
+        vTaskDelay(10000000);
         int c = fgetc(stdin);
         fputc(c, stdout);
     }
