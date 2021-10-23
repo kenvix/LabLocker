@@ -12,6 +12,7 @@
 #include "esp_event.h"
 #include "smartconfig.h"
 #include "blufi_example.h"
+#include "keydata.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -287,7 +288,7 @@ void app_main(void)
 {
     ESP_LOGD(TAG_MAIN, "Base System Initialzing");
     ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
-
+    ESP_LOGI(TAG_MAIN, "Product Serial ID: 0x%llX (%lld)", keyData.serialId, keyData.serialId);
     systemStatus.isWlanConnected = 0;
     systemStatus.isNtpCreated = 0;
     systemStatus.isNtpFinished = 0;
