@@ -1,3 +1,10 @@
 # 基于WLAN和TOTP的智能门禁控制系统
 
-WIP
+## 生成TOTP PSK
+```shell
+pip install pyotp
+```
+```python
+import pyotp
+pyotp.random_base32()
+```
