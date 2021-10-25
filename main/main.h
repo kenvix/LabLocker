@@ -23,5 +23,6 @@
 #define EXAMPLE_ESP_MAXIMUM_RETRY CONFIG_ESP_MAXIMUM_RETRY
 
 #define TAG_MAIN "App Main"
+#define COMMAND_MAX_LEN 128
 
 #endif

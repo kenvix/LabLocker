@@ -34,7 +34,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-static const char* TAG = "wifi station";
+static const char* TAG = TAG_MAIN;
 static char* channel_id;
 volatile SystemStatus systemStatus;
 void smartconfig_example_task(void* parm);
@@ -209,7 +209,7 @@ char handleCommand(char* data, int data_len) {
     }
     else if (memcmp("get totp", data, data_len) == 0)
     {
-        ESP_LOGI(TAG_MAIN, "Current TOTP key is %u", totpGenerateToken(0));
+        ESP_LOGI(TAG, "Current TOTP key is %u", totpGenerateToken(0));
         return 0;
     }
 
@@ -259,7 +259,7 @@ void init_all() {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        ESP_LOGI(TAG_MAIN, "Earsing NVS/NVRAM ...");
+        ESP_LOGI(TAG, "Earsing NVS/NVRAM ...");
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
@@ -273,24 +273,24 @@ void init_all() {
     init_gpio();
     wifi_init_sta();
 
-    ESP_LOGI(TAG_MAIN, "Setting up Smartconfig for Network initialize");
+    ESP_LOGI(TAG, "Setting up Smartconfig for Network initialize");
     //smartconfigBegin();
 
-    ESP_LOGI(TAG_MAIN, "Setting up BluFI for TOTP");
+    ESP_LOGI(TAG, "Setting up BluFI for TOTP");
     blufiInit();
 
-    ESP_LOGI(TAG_MAIN, "WLAN Connected, Setting up NTP client");
+    ESP_LOGI(TAG, "WLAN Connected, Setting up NTP client");
     // Setting up NTP client
     ntpUpdate();
-    ESP_LOGI(TAG_MAIN, "NTP client up, UNIX Time %ld", time(NULL));
+    ESP_LOGI(TAG, "NTP client up, UNIX Time %ld", time(NULL));
 
     totpInitSecret();
-    ESP_LOGI(TAG_MAIN, "Current TOTP key is %u", totpGenerateToken(0));
+    ESP_LOGI(TAG, "Current TOTP key is %u", totpGenerateToken(0));
 
-    ESP_LOGI(TAG_MAIN, "Setting up MQTT client");
+    ESP_LOGI(TAG, "Setting up MQTT client");
     init_mqtt();
 
-    ESP_LOGI(TAG_MAIN, "Initialization completed");
+    ESP_LOGI(TAG, "Initialization completed");
     vTaskDelete(NULL);
     return;
 }
@@ -298,19 +298,52 @@ void init_all() {
 
 void app_main(void)
 {
-    ESP_LOGD(TAG_MAIN, "Base System Initialzing");
-    ESP_LOGI(TAG_MAIN, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
-    ESP_LOGI(TAG_MAIN, "Product Serial ID: 0x%llX (%lld)", keyData.serialId, keyData.serialId);
-    ESP_LOGI(TAG_MAIN, "Product TOTP key: %s", keyData.totpKey);
+    ESP_LOGD(TAG, "Base System Initialzing");
+    ESP_LOGI(TAG, "========= Smart Gate Unlocker ===========\r\nWritten by Kenvix <i@kenvix.com> for AI+Mobile Internet Lab. All rights reserved.");
+    ESP_LOGI(TAG, "Product Serial ID: 0x%llX (%lld)", keyData.serialId, keyData.serialId);
+    ESP_LOGI(TAG, "Product TOTP key: %s", keyData.totpKey);
     systemStatus.isWlanConnected = 0;
     systemStatus.isNtpCreated = 0;
     systemStatus.isNtpFinished = 0;
 
     xTaskCreate(init_all, "App init", 4096, NULL, 3, NULL);
+
+    char ch;
+    char cmdBuff[COMMAND_MAX_LEN + 1];
+    int cmdLen = 0;
+
     while (true)
     {
-        vTaskDelay(10000000);
-        int c = fgetc(stdin);
-        fputc(c, stdout);
+        ch = getchar();
+        if (ch == 0xFF || ch == 0x00) {
+            vTaskDelay(200);
+            continue;
+        } else {
+            if (ch == '\r')
+                continue;
+
+            if (ch == 0x04 || ch == 0x03) {
+                ESP_LOGI(TAG, "Received CTRL+C OR EOF, drop cmd buffer.");
+                cmdLen = 0;
+                continue;
+            }
+
+            if (ch == '\n') {
+                // Command collected
+                cmdBuff[cmdLen] = 0;
+                handleCommand(cmdBuff, cmdLen);
+                cmdLen = 0;
+            } else {
+                // Collecting command chars
+                if (cmdLen == COMMAND_MAX_LEN) {
+                    ESP_LOGE(TAG, "Command buffer overflowed. Max size %d. DROPPED: %s", COMMAND_MAX_LEN, cmdBuff);
+                    cmdLen = 0;
+                    continue;
+                } else {
+                    cmdBuff[cmdLen] = ch;
+                    cmdLen++;
+                }
+            }
+        }
     }
 }
