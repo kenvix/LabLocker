@@ -16,6 +16,7 @@
 #include "keydata.h"
 #include "totp.h"
 
+
 /* The examples use WiFi configuration that you can set via project configuration menu
 
    If you'd rather not, just change the below entries to strings with
@@ -204,6 +205,11 @@ char handleCommand(char* data, int data_len) {
     {
         ESP_LOGI(TAG, "TOTP Control: Receiving new TOTP PSK");
 
+        return 0;
+    }
+    else if (memcmp("get totp", data, data_len) == 0)
+    {
+        ESP_LOGI(TAG_MAIN, "Current TOTP key is %u", totpGenerateToken(0));
         return 0;
     }
 

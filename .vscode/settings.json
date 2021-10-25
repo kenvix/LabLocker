@@ -21,5 +21,8 @@
         "smartconfig.h": "c",
         "functions.h": "c",
         "blufi_example.h": "c"
-    }
+    },
+    "cSpell.enableFiletypes": [
+        "!c"
+    ]
 }
