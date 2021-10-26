@@ -212,9 +212,26 @@ char handleCommand(char* data, int data_len) {
         ESP_LOGI(TAG, "Current TOTP key is %u", totpGenerateToken(0));
         return 0;
     }
+    else if (memcmp("date", data, data_len) == 0) 
+    {
+        time_t now;
+        struct tm timeinfo;
+        char strftime_buf[64];
+        time(&now);
 
-    ESP_LOGW(TAG, "Received unknown command: %s", data);
-    return 1;
+        localtime_r(&now, &timeinfo);
+        strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+        ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
+
+        strftime(strftime_buf, 26, "%Y-%m-%d %H:%M:%S", &timeinfo);
+        ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
+        return 0;
+    }
+    else 
+    {
+        ESP_LOGW(TAG, "Received unknown command: %s", data);
+        return 1;
+    }
 }
 
 esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
@@ -316,7 +333,7 @@ void app_main(void)
     {
         ch = getchar();
         if (ch == 0xFF || ch == 0x00) {
-            vTaskDelay(200);
+            vTaskDelay(150);
             continue;
         } else {
             if (ch == '\r')
@@ -338,6 +355,11 @@ void app_main(void)
                 if (cmdLen == COMMAND_MAX_LEN) {
                     ESP_LOGE(TAG, "Command buffer overflowed. Max size %d. DROPPED: %s", COMMAND_MAX_LEN, cmdBuff);
                     cmdLen = 0;
+
+                    do {
+                        ch = getchar();
+                    } while (ch != 0xFF && ch != 0x00 && ch != '\n');
+                    ESP_LOGD(TAG, "overflowed cmd dropped");
                     continue;
                 } else {
                     cmdBuff[cmdLen] = ch;
