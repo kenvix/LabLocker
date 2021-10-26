@@ -209,16 +209,7 @@ char handleCommand(char* data, int data_len) {
     }
     else if (memcmp("get totp", data, data_len) == 0)
     {
-        ESP_LOGI(TAG, "Current TOTP key is %u", totpGenerateToken(0));
-
-        uint8_t hmacKey[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x21, 0xde, 0xad, 0xbe, 0xef};               // Secret key
-        TOTP(hmacKey, 10, 30);                                                                        // Secret key, Key length, Timestep (7200s - 2hours)
-        // Timestamp Now
-        setTimezone(8);
-        uint32_t t = time(NULL);
-        uint32_t newCode = getCodeFromTimestamp(t);
-        printf("time %lu, totp %u", time(NULL), newCode);
-
+        ESP_LOGI(TAG, "Current KTOTP key is %u", ktotpGenerateToken(0));
         return 0;
     }
     else if (memcmp("date", data, data_len) == 0) 
@@ -310,8 +301,8 @@ void init_all() {
     ntpUpdate();
     ESP_LOGI(TAG, "NTP client up, UNIX Time %ld", time(NULL));
 
-    totpInitSecret();
-    ESP_LOGI(TAG, "Current TOTP key is %u", totpGenerateToken(0));
+    ktotpInitSecret(NULL);
+    ESP_LOGI(TAG, "Current TOTP key is %u", ktotpGenerateToken(0));
 
     ESP_LOGI(TAG, "Setting up MQTT client");
     init_mqtt();
