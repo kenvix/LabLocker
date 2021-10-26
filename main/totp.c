@@ -1,5 +1,9 @@
-#include "TOTP.h"
+#include "totp.h"
 #include "sha1.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 uint8_t* _hmacKey;
 uint8_t _keyLength;
@@ -67,3 +71,8 @@ uint32_t getCodeFromSteps(uint32_t steps) {
 
     return _truncatedHash;
 }
+
+
+#ifdef __cplusplus
+}
+#endif

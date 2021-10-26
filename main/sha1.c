@@ -1,6 +1,10 @@
 #include <string.h>
 #include "sha1.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SHA1_K0 0x5a827999
 #define SHA1_K20 0x6ed9eba1
 #define SHA1_K40 0x8f1bbcdc
@@ -84,7 +88,7 @@ void writeArray(uint8_t *buffer, uint8_t size){
 }
 
 void pad() {
-  // Implement SHA-1 padding (fips180-2 Åò5.1.1)
+  // Implement SHA-1 padding (fips180-2 ÔøΩÔøΩ5.1.1)
 
   // Pad with 0x80 followed by 0x00 until the end of the block
   addUncounted(0x80);
@@ -153,3 +157,7 @@ uint8_t* resultHmac(void) {
   for (i=0; i<HASH_LENGTH; i++) write(innerHash[i]);
   return result();
 }
+
+#ifdef __cplusplus
+}
+#endif

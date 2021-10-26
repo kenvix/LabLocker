@@ -14,8 +14,8 @@
 #include "blufi_example.h"
 #include "time.h"
 #include "keydata.h"
+#include "ktotp.h"
 #include "totp.h"
-
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -210,6 +210,15 @@ char handleCommand(char* data, int data_len) {
     else if (memcmp("get totp", data, data_len) == 0)
     {
         ESP_LOGI(TAG, "Current TOTP key is %u", totpGenerateToken(0));
+
+        uint8_t hmacKey[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x21, 0xde, 0xad, 0xbe, 0xef};               // Secret key
+        TOTP(hmacKey, 10, 30);                                                                        // Secret key, Key length, Timestep (7200s - 2hours)
+        // Timestamp Now
+        setTimezone(8);
+        uint32_t t = time(NULL);
+        uint32_t newCode = getCodeFromTimestamp(t);
+        printf("time %lu, totp %u", time(NULL), newCode);
+
         return 0;
     }
     else if (memcmp("date", data, data_len) == 0) 
