@@ -31,6 +31,9 @@
 #include "blufi_example.h"
 
 #include "esp_blufi.h"
+#include "ktotp.h"
+#include "functions.h"
+#include "locker.h"
 
 static wifi_config_t sta_config;
 static wifi_config_t ap_config;
@@ -188,8 +191,21 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         esp_log_buffer_hex("Custom Data", param->custom_data.data, param->custom_data.data_len);
         // Check whether is TOTP data
         if (param->custom_data.data_len == 6) {
-            int totpPassword = 0;
+            char buf[7];
+            memcpy(buf, param->custom_data.data, param->custom_data.data_len);
+            buf[6] = 0;
+            uint32_t totpPassword = (uint32_t) atoi(buf);
             BLUFI_INFO("TOTP / Decoded into TOTP int: %d", totpPassword);
+            static int offsets[] = {0, -1, 1};
+            for (size_t j = 0; j < 3; j++)
+            {
+                uint32_t correctToken = ktotpGenerateToken(offsets[j]);
+                if (correctToken == totpPassword) {
+                    BLUFI_INFO("Correct totp token, open door");
+                    gpioAsync(gpioDoorUnlock);
+                }
+            }
+            BLUFI_INFO("Incorrect totp token, refused to open door");
         }
 
         break;

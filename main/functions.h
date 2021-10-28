@@ -22,16 +22,16 @@
 #define NVS_WLAN_PSK "wlan.psk"
 #define NVS_TOTP_KEY "totp.key"
 
-#define PIN_DOOR_OPEN
-#define PIN_DOOR_CLOSE
-#define PIN_LED_SYS
-#define PIN_LED_WLAN
-#define PIN_LED_NTP
-#define PIN_LED_MQTT
+#define PIN_DOOR_OPEN 19
+#define PIN_DOOR_CLOSE 22
+#define PIN_LED_SYS 
+#define PIN_LED_WLAN 25
+#define PIN_LED_NTP  26
+#define PIN_LED_MQTT 27
 #define PIN_BEEP
 
 #define DOOR_ROLLTATE_DELAY 300
-#define DOOR_WAIT_USER_DELAY 5000
+#define DOOR_WAIT_USER_DELAY 8000
 
 #define NTP_SERVER_1 "ntp.aliyun.com"
 #define NTP_SERVER_2 "ntp.tuna.tsinghua.edu.cn"
@@ -40,9 +40,12 @@
 
 typedef struct SystemStatus
 {
-    unsigned char isWlanConnected : 1;
-    unsigned char isNtpCreated : 1;
-    unsigned char isNtpFinished : 1;
+    unsigned short isWlanInited : 1;
+    unsigned short isWlanConnected : 1;
+    unsigned short isNtpCreated : 1;
+    unsigned short isNtpFinished : 1;
+    unsigned short isBluetoothInited : 1;
+    unsigned short isBluFiRunning : 1;
 } SystemStatus;
 
 extern volatile SystemStatus systemStatus;

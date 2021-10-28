@@ -7,15 +7,13 @@
 #include "freertos/task.h"
 #include "functions.h"
 
-#define OUTPUT_PIN_A 19
-#define OUTPUT_PIN_B 22
-#define OUTPUT_PIN_C 18
+typedef void (* GPIOFunction)();
 
-#define LOCKER_DELAY 5000
-
-void openDoor();
-void closeDoor();
-
+void gpioDoorOpen();
+void gpioDoorClose();
 void initSuccess();
+void gpioAsync(GPIOFunction f);
+void gpioDoorUnlock();
+void gpioInit();
 
 #endif

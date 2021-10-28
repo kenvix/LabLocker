@@ -12,7 +12,7 @@ static const char* TAG = "TOTP";
 #ifdef __cplusplus
 extern "C" {
 #endif
-    static volatile uint8_t* ktotpPsk = NULL;    
+    static volatile uint8_t* ktotpPsk = NULL;
 
     void totpInitSecret() {
         uint8_t hmacKey[11];
@@ -116,25 +116,45 @@ extern "C" {
         return crc;
     }
 
+    unsigned int crc32b(unsigned char* message, int len) {
+        int i, j;
+        unsigned int byte, crc, mask;
+
+        i = 0;
+        crc = 0xFFFFFFFF;
+        for (int i = 0; i < len; i++) {
+            byte = message[i];            // Get next byte.
+            crc = crc ^ byte;
+            for (j = 7; j >= 0; j--) {    // Do eight times.
+                mask = -(crc & 1);
+                crc = (crc >> 1) ^ (0xEDB88320 & mask);
+            }
+            i = i + 1;
+        }
+        return ~crc;
+    }
+
     void ktotpInitSecret(char* sec) {
         if (ktotpPsk != NULL) {
-            uint8_t* psk = (uint8_t*) ktotpPsk;
+            uint8_t* psk = (uint8_t*)ktotpPsk;
             free(psk);
             ktotpPsk = NULL;
         }
-        uint8_t* hmacKey = (uint8_t*) malloc(sizeof(uint8_t) * 11);
+        uint8_t* hmacKey = (uint8_t*)malloc(sizeof(uint8_t) * 11);
         base32_decode(sec == NULL ? keyData.totpKey : sec, hmacKey, 10);
         hmacKey[10] = 0;
         ktotpPsk = hmacKey;
+        ESP_LOGI(TAG, "ktotpInitSecret finished. %s", sec == NULL ? keyData.totpKey : sec);
+        esp_log_buffer_hex("Key Data", hmacKey, 10);
     }
 
     uint32_t ktotpGenerateToken(int offset) {
-        uint8_t* hmacKey = (uint8_t*) ktotpPsk;
-        uint32_t now = time(NULL) / 30 + offset * 30;
+        uint8_t* hmacKey = (uint8_t*)ktotpPsk;
+        uint32_t now = time(NULL) / 30 + offset;
         for (int i = 0; i < 10; i++) {
-            now ^= (hmacKey[i] << (i * 8));
+            now ^= (hmacKey[i] << (i * 8 % 28));
         }
-        now = xcrc32((unsigned char*) &now, 4, hmacKey[9]);
+        now = crc32b((unsigned char*)&now, 4);
         now %= 1000000;
         return now;
     }

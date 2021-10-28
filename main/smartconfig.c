@@ -64,18 +64,6 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
             }
             printf("\n");
         }
-
-        // TOTP propose
-        if (strlen(password) < 8) {
-            if (systemStatus.isNtpFinished == 1) {
-                ESP_LOGI(TAG_SMARTCONFIG, "Password length < 6, TOTP purpose");
-                xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-                // call totp
-            } else {
-                ESP_LOGW(TAG_SMARTCONFIG, "Password length < 6 but NTP has not finshed!! decline");
-                xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-            }
-        }
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
         xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
     }

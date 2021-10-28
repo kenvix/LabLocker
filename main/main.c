@@ -159,13 +159,6 @@ void wifi_init_sta(void)
     vEventGroupDelete(s_wifi_event_group);
 }
 
-void init_gpio()
-{
-    gpio_set_direction(OUTPUT_PIN_A, GPIO_MODE_OUTPUT);
-    gpio_set_direction(OUTPUT_PIN_B, GPIO_MODE_OUTPUT);
-    gpio_set_direction(OUTPUT_PIN_C, GPIO_MODE_OUTPUT);
-}
-
 char handleCommand(char* data, int data_len) {
     if (data_len == 0)
     {
@@ -174,21 +167,19 @@ char handleCommand(char* data, int data_len) {
     else if (memcmp("open", data, data_len) == 0)
     {
         ESP_LOGI(TAG, "Door Control: OPEN and KEEP");
-        openDoor();
+        gpioDoorOpen();
         return 0;
     }
     else if (memcmp("close", data, data_len) == 0)
     {
         ESP_LOGI(TAG, "Door Control: CLOSE and KEEP");
-        closeDoor();
+        gpioDoorClose();
         return 0;
     }
     else if (memcmp("unlock", data, data_len) == 0)
     {
         ESP_LOGI(TAG, "Door Control: UNLOCK: OPEN and CLOSE");
-        openDoor();
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        closeDoor();
+        gpioAsync(gpioDoorUnlock);
         return 0;
     }
     else if (memcmp("echo ", data, data_len) == 0)
@@ -209,7 +200,9 @@ char handleCommand(char* data, int data_len) {
     }
     else if (memcmp("get totp", data, data_len) == 0)
     {
-        ESP_LOGI(TAG, "Current KTOTP key is %u", ktotpGenerateToken(0));
+        ESP_LOGI(TAG, "Current KTOTP key is %06u", ktotpGenerateToken(0));
+        ESP_LOGI(TAG, "Previous KTOTP key is %06u", ktotpGenerateToken(-1));
+        ESP_LOGI(TAG, "Next KTOTP key is %06u", ktotpGenerateToken(1));
         return 0;
     }
     else if (memcmp("date", data, data_len) == 0) 
@@ -217,10 +210,11 @@ char handleCommand(char* data, int data_len) {
         time_t now;
         struct tm timeinfo;
         char strftime_buf[64];
-        time(&now);
+        ESP_LOGI(TAG, "The current UNIX TIME %ld", time(&now));
 
         localtime_r(&now, &timeinfo);
         strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+        
         ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
 
         strftime(strftime_buf, 26, "%Y-%m-%d %H:%M:%S", &timeinfo);
@@ -287,7 +281,7 @@ void init_all() {
     channel_id = malloc(sizeof("door-") + sizeof(CONFIG_CLIENT_ID));
     sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
-    init_gpio();
+    gpioInit();
     wifi_init_sta();
 
     ESP_LOGI(TAG, "Setting up Smartconfig for Network initialize");
@@ -302,7 +296,7 @@ void init_all() {
     ESP_LOGI(TAG, "NTP client up, UNIX Time %ld", time(NULL));
 
     ktotpInitSecret(NULL);
-    ESP_LOGI(TAG, "Current TOTP key is %u", ktotpGenerateToken(0));
+    ESP_LOGI(TAG, "Current TOTP key is %06u", ktotpGenerateToken(0));
 
     ESP_LOGI(TAG, "Setting up MQTT client");
     init_mqtt();
