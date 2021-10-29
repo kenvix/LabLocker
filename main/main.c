@@ -24,6 +24,7 @@
 */
 
 esp_mqtt_client_handle_t mqtt_client;
+nvs_handle nvs;
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -37,13 +38,6 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char* TAG = TAG_MAIN;
 static char* channel_id;
 volatile SystemStatus systemStatus;
-void smartconfig_example_task(void* parm);
-
-/* The event group allows multiple bits for each event,
-   but we only care about one event - are we connected
-   to the AP with an IP? */
-const int CONNECTED_BIT = BIT0;
-const int ESPTOUCH_DONE_BIT = BIT1;
 
 static void wifiConnectAndWait() {
     bool selfBlink = false;
@@ -116,8 +110,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-void wifi_init_sta(void)
+void wifi_init_sta(wifi_config_t wifi_config)
 {
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     gpioAsync(gpioBlinkWlan);
     s_wifi_event_group = xEventGroupCreate();
 
@@ -149,20 +144,6 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-
-            .pmf_cfg = {
-                .capable = true,
-                .required = false},
-        },
-    };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -315,28 +296,48 @@ void wifiCheckReset() {
 }
 
 void init_all() {
-    // Initialize NVS/NVRAM
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        ESP_LOGI(TAG, "Earsing NVS/NVRAM ...");
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+        // Initialize NVS/NVRAM
+        esp_err_t ret = nvs_flash_init();
+        if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+        {
+            ESP_LOGI(TAG, "Earsing NVS/NVRAM ...");
+            ESP_ERROR_CHECK(nvs_flash_erase());
+            ret = nvs_flash_init();
+        }
+        ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+        ESP_LOGI(TAG, "Initializing NVS/NVRAM ...");
+        ESP_ERROR_CHECK(nvs_open("userdata", NVS_READWRITE, &nvs));
+        ESP_ERROR_CHECK(nvs_set_i16(nvs, "version", 1));
+    }
 
     channel_id = malloc(sizeof("door-") + sizeof(CONFIG_CLIENT_ID));
     sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
     gpioInit();
-    
-    wifiCheckReset();
-    wifi_init_sta();
 
-    ESP_LOGI(TAG, "Setting up Smartconfig for Network initialize");
-    //smartconfigBegin();
+    wifiCheckReset();
+    {
+        wifi_config_t wifi_config_stored;
+        uint32_t len = sizeof(wifi_config_stored);
+        esp_err_t ret = nvs_get_blob(nvs, "cfg.wifi", &wifi_config_stored, &len);
+
+        if (ret != ESP_OK) {
+            ESP_LOGI(TAG, "No WLAN configured. entering Smartconfig");
+            systemStatus.isWlanSmartConfigRunning = 1;
+            smartconfigBegin();
+
+            ESP_LOGI(TAG, "Setting up BluFI for WLAN configuration");
+            blufiInit();
+
+            vTaskDelete(NULL);
+            return;
+        } else {
+            esp_log_buffer_hex("Wifi config Data", &wifi_config_stored, len);
+            wifi_init_sta(wifi_config_stored);
+        }
+    }
 
     ESP_LOGI(TAG, "Setting up BluFI for TOTP");
     blufiInit();
@@ -383,6 +384,7 @@ void app_main(void)
             continue;
         }
         else {
+            gpioSetHigh(PIN_LED_SYS);
             if (ch == '\r')
                 continue;
 
@@ -415,6 +417,7 @@ void app_main(void)
                     cmdLen++;
                 }
             }
+            gpioSetLow(PIN_LED_SYS);
         }
     }
 }

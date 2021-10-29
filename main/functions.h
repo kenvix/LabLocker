@@ -17,6 +17,7 @@
 #include "driver/gpio.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "nvs.h"
 
 #define NVS_WLAN_SSID "wlan.ssid"
 #define NVS_WLAN_PSK "wlan.psk"
@@ -24,10 +25,10 @@
 
 #define PIN_DOOR_OPEN 19
 #define PIN_DOOR_CLOSE 22
-#define PIN_LED_SYS 
+#define PIN_LED_SYS 14
 #define PIN_LED_WLAN 26
 #define PIN_LED_NTP  25
-#define PIN_LED_MQTT 27
+#define PIN_LED_MQTT 16
 #define PIN_BEEP 33
 #define PIN_WLAN_RESET 32
 
@@ -42,6 +43,7 @@
 typedef struct SystemStatus
 {
     unsigned int isWlanInited : 1;
+    unsigned int isWlanSmartConfigRunning : 1;
     unsigned int isWlanConnected : 1;
     unsigned int isNtpCreated : 1;
     unsigned int isNtpFinished : 1;
@@ -52,6 +54,7 @@ typedef struct SystemStatus
     unsigned int isMqttLedBlinking : 1;
     unsigned int isNtpLedBlinking : 1;
     unsigned int isSysLedBlinking : 1;
+
 } SystemStatus;
 
 extern volatile SystemStatus systemStatus;
@@ -69,6 +72,7 @@ extern const int ESPTOUCH_DONE_BIT;
 */
 
 extern esp_mqtt_client_handle_t mqtt_client;
+extern nvs_handle nvs;
 
 void gpioSetHigh(gpio_num_t);
 void gpioSetLow(gpio_num_t);

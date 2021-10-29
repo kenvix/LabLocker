@@ -82,19 +82,30 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         break;
     case ESP_BLUFI_EVENT_SET_WIFI_OPMODE:
         BLUFI_INFO("BLUFI Set WIFI opmode %d\n", param->wifi_mode.op_mode);
-        //ESP_ERROR_CHECK( esp_wifi_set_mode(param->wifi_mode.op_mode) );
+
+        if (systemStatus.isWlanSmartConfigRunning)
+            ESP_ERROR_CHECK( esp_wifi_set_mode(param->wifi_mode.op_mode) );
         break;
     case ESP_BLUFI_EVENT_REQ_CONNECT_TO_AP:
         BLUFI_INFO("BLUFI requset wifi connect to AP\n");
         /* there is no wifi callback when the device has already connected to this wifi
         so disconnect wifi before connection.
         */
-        //esp_wifi_disconnect();
-        //esp_wifi_connect();
+        if (systemStatus.isWlanSmartConfigRunning) {
+            esp_wifi_disconnect();
+            esp_wifi_connect();
+
+            ESP_ERROR_CHECK(nvs_set_blob(nvs, "cfg.wifi", &sta_config, sizeof(sta_config)));
+            BLUFI_INFO("All done ! System rebooting");
+
+            esp_restart();
+        }
         break;
     case ESP_BLUFI_EVENT_REQ_DISCONNECT_FROM_AP:
         BLUFI_INFO("BLUFI requset wifi disconnect from AP\n");
-        //esp_wifi_disconnect();
+
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_disconnect();
         break;
     case ESP_BLUFI_EVENT_REPORT_ERROR:
         BLUFI_ERROR("BLUFI report error, error code %d\n", param->report_error.state);
@@ -130,32 +141,37 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
 	case ESP_BLUFI_EVENT_RECV_STA_BSSID:
         memcpy(sta_config.sta.bssid, param->sta_bssid.bssid, 6);
         sta_config.sta.bssid_set = 1;
-        //esp_wifi_set_config(WIFI_IF_STA, &sta_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_STA, &sta_config);
         BLUFI_INFO("Recv STA BSSID %s\n", sta_config.sta.ssid);
         break;
 	case ESP_BLUFI_EVENT_RECV_STA_SSID:
         strncpy((char *)sta_config.sta.ssid, (char *)param->sta_ssid.ssid, param->sta_ssid.ssid_len);
         sta_config.sta.ssid[param->sta_ssid.ssid_len] = '\0';
-        //esp_wifi_set_config(WIFI_IF_STA, &sta_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_STA, &sta_config);
         BLUFI_INFO("Recv STA SSID %s\n", sta_config.sta.ssid);
         break;
 	case ESP_BLUFI_EVENT_RECV_STA_PASSWD:
         strncpy((char *)sta_config.sta.password, (char *)param->sta_passwd.passwd, param->sta_passwd.passwd_len);
         sta_config.sta.password[param->sta_passwd.passwd_len] = '\0';
-        //esp_wifi_set_config(WIFI_IF_STA, &sta_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_STA, &sta_config);
         BLUFI_INFO("Recv STA PASSWORD %s\n", sta_config.sta.password);
         break;
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_SSID:
         strncpy((char *)ap_config.ap.ssid, (char *)param->softap_ssid.ssid, param->softap_ssid.ssid_len);
         ap_config.ap.ssid[param->softap_ssid.ssid_len] = '\0';
         ap_config.ap.ssid_len = param->softap_ssid.ssid_len;
-        //esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         BLUFI_INFO("Recv SOFTAP SSID %s, ssid len %d\n", ap_config.ap.ssid, ap_config.ap.ssid_len);
         break;
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_PASSWD:
         strncpy((char *)ap_config.ap.password, (char *)param->softap_passwd.passwd, param->softap_passwd.passwd_len);
         ap_config.ap.password[param->softap_passwd.passwd_len] = '\0';
-        //esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         BLUFI_INFO("Recv SOFTAP PASSWORD %s len = %d\n", ap_config.ap.password, param->softap_passwd.passwd_len);
         break;
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_MAX_CONN_NUM:
@@ -163,7 +179,8 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
             return;
         }
         ap_config.ap.max_connection = param->softap_max_conn_num.max_conn_num;
-        //esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         BLUFI_INFO("Recv SOFTAP MAX CONN NUM %d\n", ap_config.ap.max_connection);
         break;
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_AUTH_MODE:
@@ -171,7 +188,8 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
             return;
         }
         ap_config.ap.authmode = param->softap_auth_mode.auth_mode;
-        //esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         BLUFI_INFO("Recv SOFTAP AUTH MODE %d\n", ap_config.ap.authmode);
         break;
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_CHANNEL:
@@ -179,11 +197,20 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
             return;
         }
         ap_config.ap.channel = param->softap_channel.channel;
-        //esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+        if (systemStatus.isWlanSmartConfigRunning)
+            esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         BLUFI_INFO("Recv SOFTAP CHANNEL %d\n", ap_config.ap.channel);
         break;
     case ESP_BLUFI_EVENT_GET_WIFI_LIST:{
-        //esp_wifi_scan_start(&scanConf, true);
+        if (systemStatus.isWlanSmartConfigRunning) {
+            wifi_scan_config_t scanConf = {
+                .ssid = NULL,
+                .bssid = NULL,
+                .channel = 0,
+                .show_hidden = false
+            };
+            esp_wifi_scan_start(&scanConf, true);
+        }
         break;
     }
     case ESP_BLUFI_EVENT_RECV_CUSTOM_DATA:
@@ -206,6 +233,11 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
                 }
             }
             BLUFI_INFO("Incorrect totp token, refused to open door");
+        } else if (systemStatus.isWlanSmartConfigRunning) {
+            if (param->custom_data.data[0] != 0) {
+                BLUFI_INFO("New hostname: %s", param->custom_data.data);
+                ESP_ERROR_CHECK(nvs_set_str(nvs, "cfg.name", (char*) param->custom_data.data));
+            }
         }
 
         break;
