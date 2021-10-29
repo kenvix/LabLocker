@@ -45,6 +45,45 @@ void smartconfig_example_task(void* parm);
 const int CONNECTED_BIT = BIT0;
 const int ESPTOUCH_DONE_BIT = BIT1;
 
+static void wifiConnectAndWait() {
+    bool selfBlink = false;
+    if (systemStatus.isWlanLedBlinking == 0) {
+        gpioAsync(gpioBlinkWlan);
+        selfBlink = true;
+    }
+
+    esp_wifi_connect();
+    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
+     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+        WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+        pdFALSE,
+        pdFALSE,
+        portMAX_DELAY);
+
+    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
+     * happened. */
+    if (bits & WIFI_CONNECTED_BIT)
+    {
+        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
+            EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    }
+    else if (bits & WIFI_FAIL_BIT)
+    {
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
+            EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+        wifiConnectAndWait();
+    }
+    else
+    {
+        ESP_LOGE(TAG, "UNEXPECTED EVENT");
+    }
+
+    if (selfBlink) {
+        systemStatus.isWlanLedBlinking = 0;
+    }
+}
+
 static void event_handler(void* arg, esp_event_base_t event_base,
     int32_t event_id, void* event_data)
 {
@@ -54,7 +93,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        esp_wifi_connect();
+        ESP_LOGI(TAG, "WIFI ASSOICATION LOST");
+        wifiConnectAndWait();
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -78,6 +118,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void wifi_init_sta(void)
 {
+    gpioAsync(gpioBlinkWlan);
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -142,11 +183,13 @@ void wifi_init_sta(void)
     {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+        systemStatus.isWlanLedBlinking = 0;
     }
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+        wifiConnectAndWait();
     }
     else
     {
@@ -154,9 +197,6 @@ void wifi_init_sta(void)
     }
 
     /* The event will not be processed after unregister */
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-    vEventGroupDelete(s_wifi_event_group);
 }
 
 char handleCommand(char* data, int data_len) {
@@ -185,7 +225,7 @@ char handleCommand(char* data, int data_len) {
     else if (memcmp("echo ", data, data_len) == 0)
     {
         int size = sizeof(char) * data_len - 4;
-        char* buffer = (char*) malloc(size);
+        char* buffer = (char*)malloc(size);
         memcpy(buffer, data + 5, size);
         buffer[size - 1] = 0;
         ESP_LOGI(TAG, "Echo data: %s", buffer);
@@ -205,7 +245,7 @@ char handleCommand(char* data, int data_len) {
         ESP_LOGI(TAG, "Next KTOTP key is %06u", ktotpGenerateToken(1));
         return 0;
     }
-    else if (memcmp("date", data, data_len) == 0) 
+    else if (memcmp("date", data, data_len) == 0)
     {
         time_t now;
         struct tm timeinfo;
@@ -214,14 +254,14 @@ char handleCommand(char* data, int data_len) {
 
         localtime_r(&now, &timeinfo);
         strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-        
+
         ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
 
         strftime(strftime_buf, 26, "%Y-%m-%d %H:%M:%S", &timeinfo);
         ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
         return 0;
     }
-    else 
+    else
     {
         ESP_LOGW(TAG, "Received unknown command: %s", data);
         return 1;
@@ -317,6 +357,7 @@ void app_main(void)
     systemStatus.isNtpCreated = 0;
     systemStatus.isNtpFinished = 0;
 
+    gpioAsync(gpioBeepOnce);
     xTaskCreate(init_all, "App init", 4096, NULL, 3, NULL);
 
     char ch;
@@ -329,7 +370,8 @@ void app_main(void)
         if (ch == 0xFF || ch == 0x00) {
             vTaskDelay(150);
             continue;
-        } else {
+        }
+        else {
             if (ch == '\r')
                 continue;
 
@@ -344,7 +386,8 @@ void app_main(void)
                 cmdBuff[cmdLen] = 0;
                 handleCommand(cmdBuff, cmdLen);
                 cmdLen = 0;
-            } else {
+            }
+            else {
                 // Collecting command chars
                 if (cmdLen == COMMAND_MAX_LEN) {
                     ESP_LOGE(TAG, "Command buffer overflowed. Max size %d. DROPPED: %s", COMMAND_MAX_LEN, cmdBuff);
@@ -355,7 +398,8 @@ void app_main(void)
                     } while (ch != 0xFF && ch != 0x00 && ch != '\n');
                     ESP_LOGD(TAG, "overflowed cmd dropped");
                     continue;
-                } else {
+                }
+                else {
                     cmdBuff[cmdLen] = ch;
                     cmdLen++;
                 }

@@ -7,13 +7,6 @@
 #include "freertos/task.h"
 #include "functions.h"
 
-typedef void (* GPIOFunction)();
 
-void gpioDoorOpen();
-void gpioDoorClose();
-void initSuccess();
-void gpioAsync(GPIOFunction f);
-void gpioDoorUnlock();
-void gpioInit();
 
 #endif

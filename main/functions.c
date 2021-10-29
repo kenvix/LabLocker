@@ -28,7 +28,7 @@ void gpioSetLow(gpio_num_t pin)
     gpio_set_level(pin, 0);
 }
 
-void ntpUpdate() 
+void _ntpUpdateExec() 
 {
     time_t now;
     struct tm timeinfo;
@@ -38,7 +38,14 @@ void ntpUpdate()
     {
         ESP_LOGI(TAG, "Running SNTP Client");
         ntp_init();
-        ntpUpdate();
+        _ntpUpdateExec();
         systemStatus.isNtpFinished = 1;
+        systemStatus.isNtpLedBlinking = 0;
     }
+}
+
+void ntpUpdate() {
+    gpioAsync(gpioBlinkNtp);
+    _ntpUpdateExec();
+    systemStatus.isNtpLedBlinking = 0;
 }

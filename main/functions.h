@@ -25,10 +25,11 @@
 #define PIN_DOOR_OPEN 19
 #define PIN_DOOR_CLOSE 22
 #define PIN_LED_SYS 
-#define PIN_LED_WLAN 25
-#define PIN_LED_NTP  26
+#define PIN_LED_WLAN 26
+#define PIN_LED_NTP  25
 #define PIN_LED_MQTT 27
-#define PIN_BEEP
+#define PIN_BEEP 33
+#define PIN_WLAN_RESET 32
 
 #define DOOR_ROLLTATE_DELAY 300
 #define DOOR_WAIT_USER_DELAY 8000
@@ -40,12 +41,17 @@
 
 typedef struct SystemStatus
 {
-    unsigned short isWlanInited : 1;
-    unsigned short isWlanConnected : 1;
-    unsigned short isNtpCreated : 1;
-    unsigned short isNtpFinished : 1;
-    unsigned short isBluetoothInited : 1;
-    unsigned short isBluFiRunning : 1;
+    unsigned int isWlanInited : 1;
+    unsigned int isWlanConnected : 1;
+    unsigned int isNtpCreated : 1;
+    unsigned int isNtpFinished : 1;
+    unsigned int isBluetoothInited : 1;
+    unsigned int isBluFiRunning : 1;
+    
+    unsigned int isWlanLedBlinking : 1;
+    unsigned int isMqttLedBlinking : 1;
+    unsigned int isNtpLedBlinking : 1;
+    unsigned int isSysLedBlinking : 1;
 } SystemStatus;
 
 extern volatile SystemStatus systemStatus;
@@ -68,5 +74,20 @@ void gpioSetHigh(gpio_num_t);
 void gpioSetLow(gpio_num_t);
 void printLocalTime();
 void ntpUpdate();
+
+
+
+typedef void (* GPIOFunction)();
+
+void gpioDoorOpen();
+void gpioDoorClose();
+void initSuccess();
+void gpioAsync(GPIOFunction f);
+void gpioDoorUnlock();
+void gpioInit();
+void gpioBlinkNtp();
+void gpioBlinkWlan();
+void gpioBlinkMqtt();
+void gpioBeepOnce();
 
 #endif
