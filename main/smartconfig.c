@@ -97,6 +97,8 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
             }
         }
 
+        nvs_commit(nvs);
+
         ESP_ERROR_CHECK( esp_wifi_disconnect() );
         ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
         esp_wifi_connect();

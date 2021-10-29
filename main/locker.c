@@ -67,8 +67,9 @@ void gpioInit()
     gpio_set_direction(PIN_LED_WLAN, GPIO_MODE_OUTPUT);
     gpio_set_direction(PIN_LED_SYS, GPIO_MODE_OUTPUT);
     gpio_set_direction(PIN_BEEP, GPIO_MODE_OUTPUT);
-    
+
     gpio_set_direction(PIN_WLAN_RESET, GPIO_MODE_INPUT);
+    gpioSetLow(PIN_WLAN_RESET);
 
     gpioSetHigh(PIN_LED_MQTT);
 

@@ -242,6 +242,12 @@ char handleCommand(char* data, int data_len) {
         ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
         return 0;
     }
+    else if (memcmp("reboot", data, data_len) == 0)
+    {
+        ESP_LOGI(TAG, "System control: reboot!");
+        esp_restart();
+        return 0;
+    }
     else
     {
         ESP_LOGW(TAG, "Received unknown command: %s", data);
@@ -290,8 +296,13 @@ void wifiCheckReset() {
     int state = gpio_get_level(PIN_WLAN_RESET);
     ESP_LOGI(TAG, "WLAN reset pin in %d state", state);
     if (state == 1) {
-        gpioAsync(gpioBeepOnce);
-        ESP_LOGI(TAG, "WLAN reset pressed");
+        vTaskDelay(50);
+        if (state == 1) {
+            gpioAsync(gpioBeepOnce);
+            ESP_LOGI(TAG, "WLAN reset pressed");
+            ESP_LOGI(TAG, "WLAN reset cfg.wifi %d", nvs_erase_key(nvs, "cfg.wifi"));
+            nvs_commit(nvs);
+        }
     }
 }
 
@@ -380,7 +391,7 @@ void app_main(void)
     {
         ch = getchar();
         if (ch == 0xFF || ch == 0x00) {
-            vTaskDelay(150);
+            vTaskDelay(80);
             continue;
         }
         else {

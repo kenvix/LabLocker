@@ -96,8 +96,10 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
             esp_wifi_connect();
 
             ESP_ERROR_CHECK(nvs_set_blob(nvs, "cfg.wifi", &sta_config, sizeof(sta_config)));
-            BLUFI_INFO("All done ! System rebooting");
+            ESP_ERROR_CHECK(nvs_commit(nvs));
 
+            BLUFI_INFO("All done ! System rebooting");
+            systemStatus.isWlanSmartConfigRunning = 0;
             esp_restart();
         }
         break;
@@ -217,7 +219,7 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         BLUFI_INFO("Recv Custom Data %d\n", param->custom_data.data_len);
         esp_log_buffer_hex("Custom Data", param->custom_data.data, param->custom_data.data_len);
         // Check whether is TOTP data
-        if (param->custom_data.data_len == 6) {
+        if (!systemStatus.isWlanSmartConfigRunning && param->custom_data.data_len == 6) {
             char buf[7];
             memcpy(buf, param->custom_data.data, param->custom_data.data_len);
             buf[6] = 0;
@@ -235,8 +237,12 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
             BLUFI_INFO("Incorrect totp token, refused to open door");
         } else if (systemStatus.isWlanSmartConfigRunning) {
             if (param->custom_data.data[0] != 0) {
-                BLUFI_INFO("New hostname: %s", param->custom_data.data);
-                ESP_ERROR_CHECK(nvs_set_str(nvs, "cfg.name", (char*) param->custom_data.data));
+                char rvd_data[33] = { 0 };
+                memcpy(rvd_data, param->custom_data.data, param->custom_data.data_len > 32 ? 32 : param->custom_data.data_len);
+
+                BLUFI_INFO("New hostname: %s", rvd_data);
+                ESP_ERROR_CHECK(nvs_set_str(nvs, "cfg.name", rvd_data));
+                ESP_ERROR_CHECK(nvs_commit(nvs));
             }
         }
 
