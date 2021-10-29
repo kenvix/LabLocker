@@ -305,6 +305,15 @@ void init_mqtt()
     }
 }
 
+void wifiCheckReset() {
+    int state = gpio_get_level(PIN_WLAN_RESET);
+    ESP_LOGI(TAG, "WLAN reset pin in %d state", state);
+    if (state == 1) {
+        gpioAsync(gpioBeepOnce);
+        ESP_LOGI(TAG, "WLAN reset pressed");
+    }
+}
+
 void init_all() {
     // Initialize NVS/NVRAM
     esp_err_t ret = nvs_flash_init();
@@ -322,6 +331,8 @@ void init_all() {
     sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
     gpioInit();
+    
+    wifiCheckReset();
     wifi_init_sta();
 
     ESP_LOGI(TAG, "Setting up Smartconfig for Network initialize");
