@@ -2,3 +2,4 @@ build
 .vscode\c_cpp_properties.json
 main/totp_pc.exe
 *.exe
+*.out

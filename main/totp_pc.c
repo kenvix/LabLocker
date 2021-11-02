@@ -5,6 +5,7 @@
 #include "string.h"
 
 static volatile unsigned char* ktotpPsk = NULL;
+static const char defaultTotpPsk[] = "FJ20WLN44D34YM3M";
 
 unsigned int crc32b(unsigned char* message, int len) {
     int i, j;
@@ -72,7 +73,7 @@ int base32_decode(const char *encoded, unsigned char *result, int buf_len)
 }
 
 
-void ktotpInitSecret(char* sec) {
+void ktotpInitSecret(const char* sec) {
     if (ktotpPsk != NULL) {
         unsigned char* psk = (unsigned char*)ktotpPsk;
         free(psk);
@@ -82,7 +83,6 @@ void ktotpInitSecret(char* sec) {
     base32_decode(sec, hmacKey, 10);
     hmacKey[10] = 0;
     ktotpPsk = hmacKey;
-    printf("ktotpInitSecret finished. %s", sec);
 }
 
 unsigned int ktotpGenerateToken(int offset) {
@@ -96,9 +96,19 @@ unsigned int ktotpGenerateToken(int offset) {
     return now;
 }
 
-int main() {
-    ktotpInitSecret("FJ20WLN44D34YM3M");
-    printf("\nCurrent TOKEN: %u", ktotpGenerateToken(0));
-    
+int main(int argc,char *argv[]) {
+    if (argc >= 2) {
+        if (strlen(argv[1]) != 16) {
+            fputs("Error: Invalid TOTP Secret Key, expected length 16", stderr);
+            exit(2);
+            return 2;
+        } else {
+            ktotpInitSecret(argv[1]);
+        }
+    } else {
+        ktotpInitSecret(defaultTotpPsk);
+    }
+
+    printf("%06d", ktotpGenerateToken(0));
     return 0;
 }
