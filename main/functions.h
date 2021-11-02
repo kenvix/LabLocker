@@ -73,6 +73,7 @@ extern const int ESPTOUCH_DONE_BIT;
 
 extern esp_mqtt_client_handle_t mqtt_client;
 extern nvs_handle nvs;
+extern char* hostname;
 
 void gpioSetHigh(gpio_num_t);
 void gpioSetLow(gpio_num_t);

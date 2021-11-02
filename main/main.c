@@ -37,6 +37,8 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char* TAG = TAG_MAIN;
 static char* channel_id;
+
+char* hostname;
 volatile SystemStatus systemStatus;
 
 static void wifiConnectAndWait() {
@@ -83,6 +85,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
+        esp_err_t err;
+        // Set the hostname for the default TCP/IP station interface
+        if ((err = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname))
+                != ESP_OK) {
+            ESP_LOGE(TAG, "tcpip_adapter_set_hostname Err: %s", esp_err_to_name(err));
+        }
+
         esp_wifi_connect();
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
@@ -126,6 +135,7 @@ void wifi_init_sta(wifi_config_t wifi_config)
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
+
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
         ESP_EVENT_ANY_ID,
         &event_handler,
@@ -296,7 +306,9 @@ void wifiCheckReset() {
     int state = gpio_get_level(PIN_WLAN_RESET);
     ESP_LOGI(TAG, "WLAN reset pin in %d state", state);
     if (state == 1) {
-        vTaskDelay(50);
+        gpioSetLow(PIN_WLAN_RESET);
+        vTaskDelay(pdMS_TO_TICKS(300));
+        state = gpio_get_level(PIN_WLAN_RESET);
         if (state == 1) {
             gpioAsync(gpioBeepOnce);
             ESP_LOGI(TAG, "WLAN reset pressed");
@@ -327,6 +339,14 @@ void init_all() {
     sprintf(channel_id, "door-%s", CONFIG_CLIENT_ID);
 
     gpioInit();
+
+    hostname = (char*) calloc(1, 32);
+    uint32_t hostnameLen = 0;
+    nvs_get_str(nvs, "cfg.name", hostname, &hostnameLen);
+    if (hostnameLen != 0) {
+        sprintf(hostname, "Locker-%llX", keyData.serialId);
+    } 
+    ESP_LOGI(TAG, "Hostname: %s", hostname);
 
     wifiCheckReset();
     {

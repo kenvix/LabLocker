@@ -296,6 +296,14 @@ void blufiInit(void)
 
     BLUFI_INFO("BLUFI VERSION %04x\n", esp_blufi_get_version());
 
+    char nameBuf[17] = { 0 };
+    memcpy(nameBuf, hostname, 16);
+    esp_err_t devNameErr = esp_ble_gap_set_device_name(nameBuf);
+    
+    if (devNameErr != ESP_OK) {
+        BLUFI_ERROR("Unable to set device name %s: %s", nameBuf,  esp_err_to_name(devNameErr));
+    }
+
     ret = esp_blufi_register_callbacks(&example_callbacks);
     if(ret){
         BLUFI_ERROR("%s blufi register failed, error code = %x\n", __func__, ret);
