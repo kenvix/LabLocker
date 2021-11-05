@@ -134,7 +134,7 @@ extern "C" {
         return ~crc;
     }
 
-    void ktotpInitSecret(char* sec) {
+    void ktotpInitSecret(const char* sec) {
         if (ktotpPsk != NULL) {
             uint8_t* psk = (uint8_t*)ktotpPsk;
             free(psk);

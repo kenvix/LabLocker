@@ -284,8 +284,9 @@ esp_err_t mqtt_handle(esp_mqtt_event_handle_t event)
 
 void init_mqtt()
 {
-    char* device_id = malloc(sizeof("ESP32-") + sizeof(CONFIG_CLIENT_ID));
-    sprintf(device_id, "ESP32-%s", CONFIG_CLIENT_ID);
+    static char device_id[32];
+    memset(device_id, 0, 32);
+    sprintf(device_id, "Locker-%llX", keyData.serialId);
 
     //ESP_LOGI(TAG, "CLIENT_ID %s",device_id);
     const esp_mqtt_client_config_t mqtt_cfg = {
@@ -298,7 +299,6 @@ void init_mqtt()
     {
         ESP_LOGI(TAG, "mqtt client create success");
         ESP_ERROR_CHECK(esp_mqtt_client_start(mqtt_client));
-        //
     }
 }
 

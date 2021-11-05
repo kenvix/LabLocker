@@ -32,7 +32,7 @@
 #define PIN_BEEP 33
 #define PIN_WLAN_RESET 32
 
-#define DOOR_ROLLTATE_DELAY 300
+#define DOOR_ROLLTATE_DELAY 400
 #define DOOR_WAIT_USER_DELAY 8000
 
 #define NTP_SERVER_1 "ntp.aliyun.com"
